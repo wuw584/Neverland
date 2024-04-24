@@ -20,33 +20,34 @@ def read_das(fname, **kwargs):
     
 def _read_das_h5(fname, **kwargs):
     
-    h5_file = h5py.File(fname,'r')
-    nch = h5_file['Acquisition'].attrs['NumberOfLoci']
-    metadata = kwargs.pop('metadata', False)
-    
-    if metadata:
+    with h5py.File(fname,'r') as h5_file :
+    # h5_file = h5py.File(fname,'r')
+        nch = h5_file['Acquisition'].attrs['NumberOfLoci']
+        metadata = kwargs.pop('metadata', False)
         
-        time_arr = h5_file['Acquisition/Raw[0]/RawDataTime/']
-        dt = np.diff(time_arr).mean()/1e6
-        nt = len(time_arr)
-        dx = h5_file['Acquisition'].attrs['SpatialSamplingInterval']
-        GL = h5_file['Acquisition'].attrs['GaugeLength']
-        headers = dict(h5_file['Acquisition'].attrs)
-        return {'dt': dt, 
-                'nt': nt,
-                'dx': dx,
-                'nch': nch,
-                'GL': GL,
-                'headers': headers}   
-    else:
-        ch1 = kwargs.pop('ch1', 0)
-        ch2 = kwargs.pop('ch2', nch)
-        array_shape = h5_file['Acquisition/Raw[0]/RawData/'].shape
-        if array_shape[0] == nch:
-            data = h5_file['Acquisition/Raw[0]/RawData/'][ch1:ch2,:]
+        if metadata:
+            
+            time_arr = h5_file['Acquisition/Raw[0]/RawDataTime/']
+            dt = np.diff(time_arr).mean()/1e6
+            nt = len(time_arr)
+            dx = h5_file['Acquisition'].attrs['SpatialSamplingInterval']
+            GL = h5_file['Acquisition'].attrs['GaugeLength']
+            headers = dict(h5_file['Acquisition'].attrs)
+            return {'dt': dt, 
+                    'nt': nt,
+                    'dx': dx,
+                    'nch': nch,
+                    'GL': GL,
+                    'headers': headers}   
         else:
-            data = h5_file['Acquisition/Raw[0]/RawData/'][:, ch1:ch2].T
-        return data
+            ch1 = kwargs.pop('ch1', 0)
+            ch2 = kwargs.pop('ch2', nch)
+            array_shape = h5_file['Acquisition/Raw[0]/RawData/'].shape
+            if array_shape[0] == nch:
+                data = h5_file['Acquisition/Raw[0]/RawData/'][ch1:ch2,:]
+            else:
+                data = h5_file['Acquisition/Raw[0]/RawData/'][:, ch1:ch2].T
+            return data
     
     
     
