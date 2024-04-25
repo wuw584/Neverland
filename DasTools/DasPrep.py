@@ -33,6 +33,7 @@ def _read_das_h5(fname, **kwargs):
             dx = h5_file['Acquisition'].attrs['SpatialSamplingInterval']
             GL = h5_file['Acquisition'].attrs['GaugeLength']
             headers = dict(h5_file['Acquisition'].attrs)
+            h5_file.close()
             return {'dt': dt, 
                     'nt': nt,
                     'dx': dx,
@@ -47,6 +48,7 @@ def _read_das_h5(fname, **kwargs):
                 data = h5_file['Acquisition/Raw[0]/RawData/'][ch1:ch2,:]
             else:
                 data = h5_file['Acquisition/Raw[0]/RawData/'][:, ch1:ch2].T
+            h5_file.close()
             return data
     
     
