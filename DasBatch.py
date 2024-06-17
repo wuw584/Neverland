@@ -20,11 +20,6 @@ from functools import partial
 ##############################################################################################
 
 
-
-
-
-
-
 ##############################################################################################
 
 
@@ -328,11 +323,7 @@ def h5_tree(val, pre=''):
             else:
                 print(pre + '├── ' + key + ' (%d)' % len(val))
 
-
-
-
-###############################################################################################           
-
+###############################################################################################               
 def concat(flist , start = 0 , span = 20 ):
     datalist = []
     for fname in flist[ start : min( start + span , len(flist)) ]:
@@ -344,108 +335,57 @@ def concat(flist , start = 0 , span = 20 ):
     utc_day = utc_datetime.strftime("%m-%d %H:%M")
     return data , utc_datetime, utc_day 
 
-def psd_each_chunk(h5file , startn , endn , flist ,  channle_list ):
+def cal_and_save_psd_of_chunk(h5file , startn , endn , flist ,  ch_list , nfft , fs ):
     with h5py.File(h5file, 'a') as f:
     # 创建一个dataset
         span_each_pic = 10 #12h -> 50min
         concat_time = 0
-        ch_list = [10*i for i in range(295)]
         for n in range(startn, endn):
             data , utc_datetime, utc_day = concat(flist , start= span_each_pic * n ,span= span_each_pic)
-            nfft = 60000
-            fs = 2000
             start = time.time()
-            for i in range(295):
-                ch = str( ch_list[i] )
-                if not f.__contains__(ch):   #判断这个组存不存在
-                    g = f.create_group(ch)
+            for ch in ch_list:
+                if not f.__contains__(str(ch)):   #判断这个组存不存在
+                    g = f.create_group(str(ch))
                 else:
                     g = f[ch]
-                # g =  f.create_group(str(ch_list[i]))  
-                [Pxx1,f1] = signal.welch(data[i],                   # 随机信号
+                [Pxx1,f1] = signal.welch(data[ch],         # 随机信号
                                 nfft=nfft,               # 每个窗的长度
                                 fs=fs,                   # 采样频率   
                                 # detrend='mean',          # 去掉均值
                                 window=np.hanning(nfft), # 加汉尼窗
                                 noverlap=int(nfft*3/4),  # 每个窗重叠75%的数据
                                                       )        # 求单边谱
-                # print(f1)
-                g.create_dataset(str(utc_day),  data=Pxx1)
-            concat_time +=  time.time() -start
-            print(n , "拼接运行时间:%.2f min %d s"%( int(concat_time / 60) , concat_time%60) , datetime.datetime.now() , utc_day, "check in ")
-        f.close()
-
-#work flow wrong
-def cal_stft_save(h5file , startn,endn,flist):
-    with h5py.File(h5file, 'a') as f:
-    # 创建一个dataset
-        span_each_pic = 10 #12h -> 50min
-        concat_time = 0
-        ch_list = [10*i for i in range(295)]
-        for n in range(startn, endn):
-            data , utc_datetime, utc_day = concat(flist , start= span_each_pic * n ,span= span_each_pic)
-            nfft = 60000
-            fs = 2000
-            start = time.time()
-            for i in range(295):
-                ch = ch_list[i]
-                if not f.__contains__(str(ch_list[i])):   #判断这个组存不存在
-                    g = f.create_group(str(ch_list[i]))
-                else:
-                    g = f[str(ch_list[i])]
-                # g =  f.create_group(str(ch_list[i]))  
-                [Pxx1,f1] = signal.welch(data[i],                   # 随机信号
-                                nfft=nfft,               # 每个窗的长度
-                                fs=fs,                   # 采样频率   
-                                # detrend='mean',          # 去掉均值
-                                window=np.hanning(nfft), # 加汉尼窗
-                                noverlap=int(nfft*3/4),  # 每个窗重叠75%的数据
-                                )        # 求单边谱
-                # print(f1)
                 g.create_dataset(str(utc_day),  data=Pxx1)
             concat_time +=  time.time() -start
             print(n , "拼接运行时间:%.2f min %d s"%( int(concat_time / 60) , concat_time%60) , datetime.datetime.now() , utc_day, "check in ")
         f.close()
 
 
-def show_psd_Hz_time(flist ,ch_list , frequencise,  ):
+##show the temporal variation of ch in chlist in fq domain  
+def show_psd_Hz_time(psd_flist ,ch_list , frequencise,  ):
     for ch in ch_list:
         psd = []
         all_time = []
-        for fname in flist:
-            with h5py.File('../output/DAS/psd_5_10/test2_'+str(fi)+'.hdf5', 'r') as f:
+        for fname in psd_flist:
+            with h5py.File(fname, 'r') as f:
                 if len(f[str(ch)].keys()) == 1 :
                     dset = f[str(ch)]['01']
                 else:
                     dset = f[str(ch)]
                 time = [key for key in dset.keys()]
-                # print(time)  #shift time stamp
-                # start = time.index('20:00:12')
-                # time = time[start:]+time[:start]
-                # print(time)
 
                 psd.append(  [dset[key][:] for key in time][:])
                 all_time.append(time[:])
                 f.close()
         print("-----------read",ch,"------------")
-        
-        print(len(psd))
-        print(len(all_time))
-        psd = np.concatenate(psd)
+        psd = np.log(np.concatenate(psd))
         time = np.concatenate(all_time)
-        print(psd.shape)
-        print(len(time))
-
-        psd = np.log(psd)
         plt.figure(figsize=(30,10))
         plt.imshow(psd.T, aspect='auto', cmap='jet',vmin=0, vmax=12)
         plt.grid(alpha = 1)
-
         xstick = range(0, len(time) , 20)
         ystick = [frequencise[-1]*30*i for i in range(10)]
-
         plt.xticks(xstick , ["1."+time[i][-7]+" "+time[i][-5:]  for i in xstick],rotation = 0)
-
         plt.yticks(ystick , ['%d'% (i/30.)  for i in ystick])
         plt.ylabel("Frequency(Hz)")
         plt.xlabel("Time")
@@ -677,7 +617,7 @@ def cal_and_show_stft(flist ,title, nperseg , fs , overlap , save_path):
         print("运行时间 all :%.2f min %d s"%( int(all_time / 60) , all_time%60) )
 
 #check
-def cal_and_show_stft_split(flist ,title, nperseg , fs , overlap , split , save_path, channel_rete = 5 ,figsize0 = [15,6]):
+def cal_and_show_stft_split(flist ,title, nperseg , fs , overlap , split , save_path, channel_rete = 5 ,figsize0 = [15,6]  , lp = 0 , hp = 1):
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     all_start = time.time()
@@ -696,8 +636,9 @@ def cal_and_show_stft_split(flist ,title, nperseg , fs , overlap , split , save_
             #     f2.create_dataset("f",  data=f1 )
             #     f2.create_dataset("t",  data=t1 )
 
-            hlim= len(f1)//5+3
-            Spg = Spg[:hlim] #only 0-100Hz
+            llim = int(len(f1)*lp)
+            hlim= int(len(f1)*hp)+2
+            Spg = Spg[llim:hlim] #only 0-100Hz
             
             # for spgi in Spg[::]
             ch = fname.split('/' )[-1][:-5]+"  "
@@ -965,6 +906,10 @@ def normalization(data):
     _range = np.max(data) - np.min(data)
     return (data - np.min(data)) / _range
  
+
+def normalization2(data):
+    _range = np.max(data) - np.min(data)
+    return (data) / _range *10
  
 def standardization(data):
     mu = np.mean(data, axis=0)
@@ -1030,8 +975,27 @@ def show_concat_channel_balenced(flist ,psdh5file, start, stop , step ,decimate 
         plt.savefig(save_path+"channel_balanced_" +index)
         plt.close()
 
+
+#check
+def channel_2_wav(flist , save_path , fs ,  start_time = None  ,end_time =None ):
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+    for fname in flist:
+
+        with h5py.File(fname, 'r') as f:
+            time_list = [key for key in f.keys()]
+            print(time_list[:8])
+            if start_time is not None and end_time is not None : 
+                    time_list = time_list[time_list.index(start_time):time_list.index(end_time)+1]
+            data= [f[key][:] for key in time_list][:]
+            data = np.concatenate(data)
+            ch = fname.split('/' )[-1][:-5]
+            scipy.io.wavfile.write(save_path+ch+".wav" , fs ,data)
+
 #check
 def das_time2ch(flist , ch_list ,  start,stop , step ,save_path):
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
     for n in range(start, stop , step):
         data , utc_datetime, utc_day = concat(flist , start= n ,span= step)
         start = time.time()
@@ -1039,3 +1003,199 @@ def das_time2ch(flist , ch_list ,  start,stop , step ,save_path):
         for ch in ch_list:
             with h5py.File(save_path+str(ch)+'.hdf5', 'a') as f:
                 f.create_dataset(str(utc_datetime),  data= data[ch] )
+
+
+
+def show_ifft_time_point_amtitude_channel(flist  , ch_list, frequencise ,  dis_spacing ,  title ,  save_path  , timeindex = [0] , start_time = None , end_time = None ):
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+    for ti in timeindex:
+        all_AC = []
+        for ch in ch_list:
+            for fi in flist:
+                with h5py.File(fi, 'r') as f:
+                    if len(f[str(ch)].keys()) == 1 :
+                        dset = f[str(ch)]['01']
+                    else:
+                        dset = f[str(ch)]
+                    time = [i for i in dset.keys()]
+                    
+                    if start_time is not None and end_time is not None : 
+                        time = time[time.index(start_time):time.index(end_time)+1]
+                    timei = time[ti]
+                    psd = np.array(dset[timei])
+                    print(psd.shape)
+                    AC = np.fft.ifft( np.abs(psd))
+                    f.close()
+                    # AC = np.fft.fftshift(AC)
+                    all_AC.append(abs(AC))
+                    print(len(all_AC))
+
+        all_AC= np.array(all_AC)
+        plt.figure(figsize=(30,8))
+        plt.imshow(np.log(all_AC).T, aspect='auto', cmap='jet', vmin=0, vmax=np.max(np.log(all_AC)))
+        print(np.max(np.log(all_AC)))
+        # xstick = np.array(range(0, len(ch_list) * dis_spacing , 125 ) ) //2
+        ystick = [frequencise[-1]*3*i for i in range(10)]
+        # plt.xticks(xstick , [ch_list[i]  for i in xstick] ,rotation = 0)
+        plt.yticks(ystick , ['%d'% (i/30.)  for i in ystick])
+        plt.ylabel("Frequency")
+        plt.xlabel("Channel")
+        plt.grid()
+        plt.title("log(ifft(PSD))"+title + timei)
+        plt.colorbar()
+        plt.savefig(save_path+timei)
+        plt.show()
+        plt.close()
+
+
+######
+#   
+
+def show_ifft_time_range_amtitude_channel(flist  , ch_list, frequencise ,  dis_spacing ,  title ,  save_path  , t_range = [0,-1] , start_time = None , end_time = None  ):
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+    all_AC = []
+    all_psd = []
+    for ch in ch_list:
+        for fi in flist:
+            with h5py.File(fi, 'r') as f:
+                if len(f[str(ch)].keys()) == 1 :
+                    dset = f[str(ch)]['01']
+                else:
+                    dset = f[str(ch)]
+                time = [i for i in dset.keys()][t_range[0] : t_range[-1]]
+                
+                if start_time is not None and end_time is not None : 
+                    time = time[time.index(start_time):time.index(end_time)+1]
+                psd = np.average([dset[ti] for ti in time] ,axis=0)
+                all_psd.append(psd)
+                # print(psd.shape)
+                # plt.figure()
+                # plt.plot(np.append(psd[::-1][:-2] , psd))
+                # print(np.append(psd[::-1][:-2] , psd)[15000-3:15000+3])
+                # plt.show()
+                AC = np.fft.ifft( np.abs(np.append(psd[::-1][:-2] , psd)))
+                # AC2 = np.fft.ifft( np.abs( psd))
+
+
+                # # avg_AC = np.average([np.fft.ifft( np.abs(np.append(np.array(dset[ti])[::-1][:-2] , dset[ti]))) for ti in time] ,axis=0)
+                # plt.figure()
+                # plt.plot(AC)
+                # plt.plot(avg_AC)
+                # plt.plot(AC2)
+                # plt.show()
+                # print(AC.shape)
+
+                f.close()
+                # AC = np.fft.fftshift(AC)
+                all_AC.append(np.abs(AC[: len(AC)//2]))
+
+    if False:
+        with h5py.File(save_path+'acf' +'.hdf5', 'w') as f:
+            f.create_dataset(str(time[0] + " - "+time[-1]),  data=all_AC )
+            f.close()
+    # all_psd = all_psd[80:]
+    # all_AC = all_AC[80:]
+ 
+    all_psd= np.array(all_psd)
+    all_psd_s= np.log(all_psd)
+    
+    total_fig = 700
+
+    plt.figure(figsize=(30, 30 ))
+    plt.tight_layout()
+    plt.subplot(total_fig+11)
+    clim = all_psd_s.std() /30
+    plt.imshow(all_psd_s.T, aspect='auto', cmap='jet', vmin=0, vmax=12)
+    ystick = [frequencise[-1]*3*i for i in range(10)]
+    plt.yticks(ystick , ['%d'% (i/30.)  for i in ystick])
+    plt.ylabel("fq(Hz)")
+    plt.xlabel("Channel")
+    plt.grid()
+    plt.title("log(PSD)"+title + time[0] + " - "+time[-1])
+    plt.colorbar()
+
+
+    sum_psd = np.sum(all_psd,axis = 1)
+    plt.subplot(total_fig+12)
+    plt.plot(sum_psd)
+    plt.ylabel("amplitude")
+    plt.xlabel("Channel")
+    plt.grid()
+    plt.title("sum(PSD)"+title + time[0] + " - "+time[-1])
+
+    balenced_psd =  np.divide(all_psd.T,sum_psd /70000)
+    balenced_psd_s = np.log(balenced_psd)
+
+    plt.subplot(total_fig+13)
+    clim = balenced_psd.std() 
+    print(clim ,all_psd.std()) 
+    plt.imshow(balenced_psd_s, aspect='auto', cmap='jet', vmin=0, vmax=6)
+    ystick = [frequencise[-1]*3*i for i in range(10)]
+    plt.yticks(ystick , ['%d'% (i/30.)  for i in ystick])
+    plt.ylabel("fq(Hz)")
+    plt.xlabel("Channel")
+    plt.grid()
+    plt.title("balence (PSD)"+title + time[0] + " - "+time[-1])
+    plt.colorbar()
+
+    all_AC= np.array(all_AC)
+    all_AC = np.divide(all_AC.T , sum_psd /70000 ).T
+    all_AC_s= all_AC /np.max(all_AC)
+    plt.subplot(total_fig+14)
+    clim = all_AC_s.std() /2
+    plt.imshow(all_AC_s.T, aspect='auto', cmap='jet', vmin=0, vmax=clim)
+    ystick = [5000*i for i in range(4)]
+    plt.yticks(ystick , ['%d'% (i/1000.)  for i in ystick])
+    plt.ylabel("Time(s)")
+    plt.xlabel("Channel")
+    plt.grid()
+    plt.title("ifft(PSD)"+title + time[0] + " - "+time[-1])
+    plt.colorbar()
+
+
+    w = 7
+    rolling_mean = np.array ([ np.convolve(ac, np.ones(w), "valid") / w for ac in all_AC] )
+    rolling_mean_s = rolling_mean / np.max(rolling_mean)
+    plt.subplot(total_fig+15)
+    clim = rolling_mean_s.std() /2
+    plt.imshow(rolling_mean_s.T, aspect='auto', cmap='jet', vmin=0, vmax=clim)
+    ystick = [5000*i for i in range(4)]
+    plt.yticks(ystick , ['%d'% (i/1000.)  for i in ystick])
+    plt.ylabel("Time(s)")
+    plt.xlabel("Channel")
+    plt.grid()
+    plt.title(" moving window average (ifft(PSD) , w = 20 )"+title + time[0] + " - "+time[-1])
+    plt.colorbar()
+
+
+    deco = np.array([scipy.signal.deconvolve(all_AC[i] , rolling_mean[i])[1] for i in range(len(all_AC))])
+    print(deco.shape)
+    deco_s = deco/np.max(deco)
+    plt.subplot(total_fig+16)
+    clim = deco_s.std() /3
+    plt.imshow(deco_s.T, aspect='auto', cmap='gray', vmin=0, vmax=clim)
+    ystick = [5000*i for i in range(4)]
+    plt.yticks(ystick , ['%d'% (i/1000.)  for i in ystick])
+    plt.ylabel("Time(s)")
+    plt.xlabel("Channel")
+    plt.grid()
+    plt.title(" decon(rolliong(ifft(PSD))) "+title + time[0] + " - "+time[-1])
+    plt.colorbar()
+
+    filter_data = dp.bandpass(deco, 0.001, 1 , 30 )
+    filter_data_s = filter_data/np.max(filter_data)
+    plt.subplot(total_fig+17)
+    clim = filter_data_s.std()/20
+    plt.imshow(filter_data_s.T, aspect='auto', cmap='gray', vmin=0, vmax=clim)
+    ystick = [5000*i for i in range(4)]
+    plt.yticks(ystick , ['%d'% (i/1000.)  for i in ystick])
+    plt.ylabel("Time(s)")
+    plt.xlabel("Channel")
+    plt.grid()
+    plt.title("1-30 filter decon(rolliong(ifft(PSD))) "+title + time[0] + " - "+time[-1])
+    plt.colorbar()
+    plt.savefig(save_path+time[0]+"-"+time[-1]+" 1-30 filter,2  ")
+    plt.show()
+    plt.close()
