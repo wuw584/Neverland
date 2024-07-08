@@ -282,9 +282,7 @@ def segment(segment_start_datetime , segment_end_datetime ,  save_path ,fname_np
             gc.collect()
             print(' ')
 
-
-
-#?############################################################################################
+#############################################################################################
 
 def show_dir_tree(val, pre=''):
     items = len(val)
@@ -796,9 +794,11 @@ def find_mutations(data, threshold):
 
 def show_sum_and_psd(h5file , ch_list , dis_spacing , title , save_path , darkline = None , mutation_th = None , mutations = None):
     #tested
+
     with h5py.File(h5file, 'r') as f:
-        all_psd = f['psd']
-        sum_psd = f['sum_psd']
+        print(f.keys())
+        all_psd = f['all_psd']
+        sum_psd = np.sum(all_psd , axis = 1)
 
         fig = plt.figure(figsize=(60,12))
         plt.subplot(211)
@@ -834,12 +834,12 @@ def show_sum_and_psd(h5file , ch_list , dis_spacing , title , save_path , darkli
         # plt.imshow(psd.T, aspect='auto', cmap='viridis')
 
         xstick = np.array(range(0, len(ch_list) * dis_spacing , 125 ) ) /2
-        ystick = [300*i for i in range(11)]
+        ystick = [150*i for i in range(11)]
 
         xstick_2 = np.append(xstick , mutations)
         xstick_3 = np.append(xstick_2 , darkline)
 
-        plt.xticks(xstick_3 ,[ "%d"%(i*8) for i in xstick_3] ,rotation = 90)
+        plt.xticks(xstick_3 ,[ "%d"%(i*dis_spacing) for i in xstick_3] ,rotation = 90)
         # for i in mutations:
         #     plt.get_xticklabels()[i].set_color("red")
 
@@ -852,10 +852,10 @@ def show_sum_and_psd(h5file , ch_list , dis_spacing , title , save_path , darkli
         plt.grid(visible=1)
         if darkline is not None:
             for i in darkline:
-                plt.vlines(i, 0, 3000, linestyles='dashed', colors='black')
+                plt.vlines(i, 0, 1500, linestyles='dashed', colors='black')
         if mutations is not None:
             for k in mutations:
-                plt.vlines(k, 0, 3000, linestyles="dotted", colors='red')
+                plt.vlines(k, 0, 1500, linestyles="dotted", colors='red')
         plt.title("log(mean(PSD))  "+title)
         position=fig.add_axes([0.92, 0.3, 0.01, 0.4])#位置[左往右移动,下往上移动,宽度压缩,高度压缩]
         cb=plt.colorbar(im,cax=position)#方向
@@ -864,6 +864,7 @@ def show_sum_and_psd(h5file , ch_list , dis_spacing , title , save_path , darkli
         plt.savefig(save_path) #10s per pic
         plt.show()
         plt.close()
+
 
 #check
 def show_concat(flist , start, stop , step ,decimate , clim_rate ,title , save_path ,N):
@@ -1077,8 +1078,6 @@ def show_ifft_time_range_amtitude_channel(flist  , ch_list, frequencise ,  dis_s
                 # plt.show()
                 AC = np.fft.ifft( np.abs(np.append(psd[::-1][:-2] , psd)))
                 # AC2 = np.fft.ifft( np.abs( psd))
-
-
                 # # avg_AC = np.average([np.fft.ifft( np.abs(np.append(np.array(dset[ti])[::-1][:-2] , dset[ti]))) for ti in time] ,axis=0)
                 # plt.figure()
                 # plt.plot(AC)
@@ -1086,7 +1085,6 @@ def show_ifft_time_range_amtitude_channel(flist  , ch_list, frequencise ,  dis_s
                 # plt.plot(AC2)
                 # plt.show()
                 # print(AC.shape)
-
                 f.close()
                 # AC = np.fft.fftshift(AC)
                 all_AC.append(np.abs(AC[: len(AC)//2]))
