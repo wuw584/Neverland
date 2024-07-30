@@ -9,9 +9,10 @@ def img2patch_pad(img_path,save_dir,patch_size=64,padding=16):
     # print(img_path)
     img = cv2.imread(img_path)
     img_w,img_h = img.shape[:2] 
-    # print(img_w,img_h)    # 4800,4800
-    patch_num = int(img_w / patch_size)  # 75
-    for i in range(patch_num):
+    # print(img_w,img_h)    # 4800,4800   
+    patch_num = int(img_h / patch_size)  # 75
+
+    for i in range(int(img_w / patch_size)):
         for j in range(int(img_h / patch_size)):
             patch_img = img[i*patch_size:(i+1)*patch_size,j*patch_size:(j+1)*patch_size]
             patch_id = i*patch_num+j
@@ -26,7 +27,8 @@ def img2patch_pad(img_path,save_dir,patch_size=64,padding=16):
 def patch2img_pad(patch_dir,img_name,img_save_path,img_w,img_h ,padding=16 , patch_num = 75 , patch_size=64):
     patch_size = 64
     img = np.zeros((img_w,img_h,3),dtype=np.uint8)
-    for i in range(patch_num):
+    patch_num = int(img_h / patch_size) 
+    for i in range(int(img_w / patch_size)):
         for j in range(int(img_h / patch_size)):
             patch_id = i*patch_num+j
             patch_name = img_name + '_' + str(patch_id).zfill(5) + '.png'
@@ -53,6 +55,7 @@ def txt2line(txt_dir,patch_dir):
 
     for i in range(len(txt_names)):
         t_name = txt_names[i]
+    
         p_name = patch_names[i]
 
         txt_path = os.path.join(txt_dir,t_name)

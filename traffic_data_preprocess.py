@@ -105,17 +105,16 @@ def img2patch_pad(img_path,save_dir,patch_size=64,padding=16):
     print(img_name)
     img = cv2.imread(img_path)
     img_w,img_h = img.shape[:2]     # 4800,4800
-    patch_num = int(img_w / patch_size)  # 4800/64 = 75
+    patch_num = int(img_h / patch_size)  # 4800/64 = 75
 
-    for i in range(patch_num):
-        for j in range(patch_num):
+    for i in range(int(img_w / patch_size)):
+        for j in range(int(img_h / patch_size)):
             patch_img = img[i*patch_size:(i+1)*patch_size,j*patch_size:(j+1)*patch_size]
             patch_id = i*patch_num+j
-            patch_name = img_name + '_' + str(patch_id).zfill(5) + '.png'
+            patch_name = "pic5_1_"+img_name + '_' + str(patch_id).zfill(5) + '.png'
             patch_path = os.path.join(save_dir,patch_name)
 
             patch_img_pad = cv2.copyMakeBorder(patch_img, padding, padding, padding, padding, cv2.BORDER_CONSTANT)
-
             cv2.imwrite(patch_path,patch_img_pad)
 
 def xlabel2yolo_pad(img_name,xlabel_json_path,yolo_save_dir,patch_size,padding):
@@ -140,7 +139,7 @@ def xlabel2yolo_pad(img_name,xlabel_json_path,yolo_save_dir,patch_size,padding):
         # 将line划分到各个patch中
         patch_lines,patch_names = line_devide(long_line, patch_size=64, patch_num=25, img_name=img_name)
         for j in range(len(patch_lines)):
-            yolo_txt_name = patch_names[j] + '.txt'
+            yolo_txt_name = "pic5_1_"+patch_names[j] + '.txt'
             yolo_txt_path = os.path.join(yolo_save_dir,yolo_txt_name)
 
             p_line = patch_lines[j]
@@ -234,22 +233,19 @@ def get_patches(data_dir,patch_save_dir,yolo_save_dir):
     # --data_dir: 已标注图像及json的文件夹
     # --patch_save_dir: 划分好后的img patch保存路径
     # --yolo_save_dir: 划分好后的yolo 标签 保存路径
-
-
-
     # 遍历处理问价夹下所有图片及标注
     file_list = os.listdir(data_dir)
     img_list = [f for f in file_list if f.endswith("png")]
+    img_list.sort()
     json_list = [f for f in file_list if f.endswith("json")]
+    json_list.sort()
     print(img_list)
     for i in range(len(img_list)):
         img_name = img_list[i]
         i_name = img_name.replace(".png","")
         json_name = json_list[i]
-
         img_path = os.path.join(data_dir,img_name)
         json_path = os.path.join(data_dir,json_name)
-        
         patch_size = 64
         padding = 16
         # 1. 将大图分成小块，并填充边缘。小块大小为（64，64），边缘填充16像素黑边
