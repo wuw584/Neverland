@@ -1,3 +1,3 @@
-py2exe/build/*
-py2exe/dist/*
+TinkerBell/build/*
+TinkerBell/dist/*
 cut_event/*.h5
