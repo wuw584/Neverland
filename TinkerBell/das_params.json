@@ -1,0 +1,20 @@
+{
+    "data_dir": "G:\\chuangzhiyuncheng_sz\\czyc_Noise2DAS\\py2exe\\dist\\data\\" ,
+    
+    "das_read_clean_save_dir" : "G:\\chuangzhiyuncheng_sz\\czyc_Noise2DAS\\py2exe\\dist\\output\\",
+
+    "event_catalog_file" : "TinkerBell/event_catalog.txt" ,
+
+    "dt_before" : 1 , 
+
+    "dt_after" : 2 ,
+
+    "event_cut_npy_save_dir" :  "G:\\chuangzhiyuncheng_sz\\czyc_Noise2DAS\\py2exe\\dist\\output\\hammer_signal\\" ,
+
+    "event_cut_file_name_prefix " :  "test_cut" , 
+    
+    "event_cut_plot_save_dir"  : "" 
+
+
+
+}
