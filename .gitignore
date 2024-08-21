@@ -1,3 +1,4 @@
 TinkerBell/build/*
 TinkerBell/dist/*
+TinkerBell/*.h5
 cut_event/*.h5

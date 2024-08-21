@@ -17,6 +17,12 @@ def read_das(fname, **kwargs):
     else:
         print('DAS data format not supported.')
 
+
+def read_h5(file):
+    f = h5py.File(file,'r')
+    data = f['Acquisition/Raw[0]/RawData/'][:].T
+    dt = np.diff(f['Acquisition/Raw[0]/RawDataTime'][:]).mean()/1e6
+    return data, dt
     
 def _read_das_h5(fname, **kwargs):
     

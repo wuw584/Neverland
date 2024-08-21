@@ -6,7 +6,7 @@ import pandas as pd
 import os
 from scipy import signal
 import h5py
-import DasPrep as dp
+from . import DasPrep as dp
 
 
 def get_cat_time(catalog):
@@ -43,7 +43,9 @@ def extract_das_data(das_file, ev_time, dt_before, dt_after, save_file_name_pref
     
     ev_time_before = ev_time_in_das_win - datetime.timedelta(seconds=dt_before)
     ev_time_after  = ev_time_in_das_win + datetime.timedelta(seconds=dt_after)
+    # print("dsf",das_file_time.min(), das_file_time.max())
 
+    iev_list = []
     for iev in range(len(ev_id_in_das_win[0])):
 
         savename = save_file_name_prefix + str(ev_id_in_das_win[0][iev]) + '.npy'
@@ -63,7 +65,7 @@ def extract_das_data(das_file, ev_time, dt_before, dt_after, save_file_name_pref
 
             data = []
             for i in range(len(das_file_select)):
-#                 print(das_file_select[i])
+                # print(das_file_select[i])
 
                 datatmp, dt, nt = read_das_data(das_file_select[i])
                 istart, iend = 0, np.copy(nt)
@@ -82,5 +84,8 @@ def extract_das_data(das_file, ev_time, dt_before, dt_after, save_file_name_pref
             data = np.concatenate(data, axis=1)
             if (data.size > 0):
                 np.save(savename, data.astype('float32'))
+                iev_list.append(ev_id_in_das_win[0][iev])
+    
+    return iev_list
 
 

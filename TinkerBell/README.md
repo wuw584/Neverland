@@ -15,4 +15,4 @@ python打包成exe怎么读取当前路径
 
 https://blog.csdn.net/fei347795790/article/details/128840205
 删掉第三方库减少文件大小
-把工位本地的pip list 导出到requirement.txt
+把工位本地的pip list 导出到requirement_archive.txt
