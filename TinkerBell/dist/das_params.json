@@ -1,0 +1,16 @@
+{
+    "data_dir": "G:\\chuangzhiyuncheng_sz\\data\\" ,
+    
+    "event_catalog_file" : "G:\\chuangzhiyuncheng_sz\\event_catalog.txt" ,
+
+    "dt_before" : 1 , 
+
+    "dt_after" : 2 ,
+
+    "event_cut_npy_save_dir" :  "G:\\chuangzhiyuncheng_sz\\output\\hammer_signal\\" ,
+
+    "event_cut_file_name_prefix" :  "test_cut" , 
+    
+    "event_cut_plot_save_dir"  : "G:\\chuangzhiyuncheng_sz\\output\\"
+
+}

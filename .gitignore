@@ -2,3 +2,6 @@ TinkerBell/build/*
 TinkerBell/dist/*
 TinkerBell/*.h5
 cut_event/*.h5
+!TinkerBell/dist/*.exe
+!TinkerBell/dist/*.txt
+!TinkerBell/dist/*.json

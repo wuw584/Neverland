@@ -1,0 +1,2 @@
+G:\chuangzhiyuncheng_sz\czyc_Noise2DAS\py2exe\dist\data
+G:\chuangzhiyuncheng_sz\czyc_Noise2DAS\py2exe\dist\output
