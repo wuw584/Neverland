@@ -1,16 +1,16 @@
 {
-    "data_dir": "G:\\chuangzhiyuncheng_sz\\data\\" ,
+    "data_dir": "G:\\test\\data" ,
     
-    "event_catalog_file" : "G:\\chuangzhiyuncheng_sz\\event_catalog.txt" ,
+    "das_read_clean_save_dir" : "G:\\test\\output\\",
 
-    "dt_before" : 1 , 
+    "das_ch1" : 105,
 
-    "dt_after" : 2 ,
+    "das_ch2" : 1241,
 
-    "event_cut_npy_save_dir" :  "G:\\chuangzhiyuncheng_sz\\output\\hammer_signal\\" ,
+    "M": 10,
 
-    "event_cut_file_name_prefix" :  "test_cut" , 
-    
-    "event_cut_plot_save_dir"  : "G:\\chuangzhiyuncheng_sz\\output\\"
+    "norm_amp_ch": 600 ,
+
+    "plt_save_name" :  "ch105-1241_600"
 
 }

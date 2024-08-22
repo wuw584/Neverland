@@ -1,5 +1,6 @@
 TinkerBell/build/*
 TinkerBell/dist/*
+TinkerBell/test/*
 TinkerBell/*.h5
 cut_event/*.h5
 !TinkerBell/dist/*.exe

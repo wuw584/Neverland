@@ -1,7 +1,17 @@
 {
-    "data_dir": "G:\\chuangzhiyuncheng_sz\\czyc_Noise2DAS\\TinkerBell\\dist\\data\\" ,
+    "data_dir": "G:\\chuangzhiyuncheng_sz\\czyc_Noise2DAS\\TinkerBell\\test\\data\\" ,
     
-    "das_read_clean_save_dir" : "G:\\chuangzhiyuncheng_sz\\czyc_Noise2DAS\\TinkerBell\\dist\\output\\",
+    "das_read_clean_save_dir" : "G:\\chuangzhiyuncheng_sz\\czyc_Noise2DAS\\TinkerBell\\test\\output\\",
+
+    "das_ch1" : 505,
+
+    "das_ch2" : 1241,
+
+    "M": 10,
+
+    "norm_amp_ch": 700 ,
+
+    "plt_save_name" :  "ch105-1241_700", 
 
     "event_catalog_file" : "G:\\chuangzhiyuncheng_sz\\czyc_Noise2DAS\\TinkerBell\\event_catalog.txt" ,
 
