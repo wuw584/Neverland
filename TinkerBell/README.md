@@ -6,13 +6,20 @@ https://blog.csdn.net/zhebushibiaoshifu/article/details/136448891
 https://blog.csdn.net/qq_48979387/article/details/132359366
 Python pyinstaller打包exe最完整教程
 
-! pyinstaller -F -i "C.jpg" DAS_read_clean.py
+指令：
+! pyinstaller -F  DAS_read_clean.py
 
 
 https://blog.51cto.com/u_16213419/8463882
 python打包成exe怎么读取当前路径
 
 
+打包后debug方式：
+用cmd输入exe脚本路径，回车运行，可以看到报错
+
+
 https://blog.csdn.net/fei347795790/article/details/128840205
 删掉第三方库减少文件大小
 把工位本地的pip list 导出到requirement_archive.txt
+
+
