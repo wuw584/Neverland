@@ -2,46 +2,118 @@ import os
 import pandas as pd
 import numpy as np
 import cv2
+import math
 
-def txt2line(txt_dir,patch_dir):
-    color = [(0,255,0),(255,213,0)]
 
-    txt_names = os.listdir(txt_dir)
-    patch_names = [n.replace("txt","png") for n in txt_names]
+from scipy.optimize import linear_sum_assignment
 
-    for i in range(len(txt_names)):
-        t_name = txt_names[i]
-        p_name = patch_names[i]
-        txt_path = os.path.join(txt_dir,t_name)
-        patch_path = os.path.join(patch_dir,p_name)
-        patch_img = cv2.imread(patch_path)
-        img_h,img_w = patch_img.shape[:2]
-        with open(txt_path, "r") as file:
-            box_data = file.readlines()
-        for j in range(len(box_data)):
-            single_box = box_data[j][:-1]   # 最后一个是换行符，去掉
-            single_box_str = single_box.split(" ")
-            single_box_float = [float(s) for s in single_box_str]
+# def iou(bb_test, bb_gt):
+#     """
+#     在两个box间计算IOU
+#     :param bb_test: box1 = [x1y1x2y2] 即 [左上角的x坐标，左上角的y坐标，右下角的x坐标，右下角的y坐标]
+#     :param bb_gt: box2 = [x1y1x2y2]
+#     :return: 交并比IOU
+#     """
+#     xx1 = np.maximum(bb_test[0], bb_gt[0]) #获取交集面积四边形的 左上角的x坐标
+#     yy1 = np.maximum(bb_test[1], bb_gt[1]) #获取交集面积四边形的 左上角的y坐标
+#     xx2 = np.minimum(bb_test[2], bb_gt[2]) #获取交集面积四边形的 右下角的x坐标
+#     yy2 = np.minimum(bb_test[3], bb_gt[3]) #获取交集面积四边形的 右下角的y坐标
+#     w = np.maximum(0., xx2 - xx1) #交集面积四边形的 右下角的x坐标 - 左上角的x坐标 = 交集面积四边形的宽
+#     h = np.maximum(0., yy2 - yy1) #交集面积四边形的 右下角的y坐标 - 左上角的y坐标 = 交集面积四边形的高
+#     wh = w * h #交集面积四边形的宽 * 交集面积四边形的高 = 交集面积
+#     """
+#     两者的交集面积，作为分子。
+#     两者的并集面积作为分母。
+#     一方box框的面积：(bb_test[2] - bb_test[0]) * (bb_test[3] - bb_test[1])
+#     另外一方box框的面积：(bb_gt[2] - bb_gt[0]) * (bb_gt[3] - bb_gt[1]) 
+#     """
+#     o = wh / ( (bb_test[2] - bb_test[0]) * (bb_test[3] - bb_test[1])
+#                + (bb_gt[2] - bb_gt[0]) * (bb_gt[3] - bb_gt[1])
+#                - wh)
+#     return o
 
-            label = single_box_float[0]
-            xywh = single_box_float[1:]
-            xyxy = xywh2xyxy(img_w,img_h,xywh)
+def iou(bb_test, bb_gt):
+    """
+    在两个box间计算IOU ,匹配值 
+    :param bb_test: box1 = [p1 , p2 , c ] 即 [向量起点[x,y] , 向量终点 , 方向] (新一帧 , 检测框)
+    :param bb_gt: box2 = [p1 , p2 , c ] 即 [向量起点 , 向量终点 , 方向] (旧一帧 , 原目标)
+    :return: 交并比IOU = k1 * cos(向量夹角) +  k2 * dis( 目标终点 , 检测起点 ) + k3 * (c1 == c2)
+    期望匹配值越大越好，既 
+        夹角越小越好 cos越大越好 k1 > 0 
+        距离越小越好 k2 < 0  
+        方向一致 k3 > 0
+    """
+    k1 , k2 , k3 = 1 , -0.2 , 1 
+    va = np.array( [bb_test[1][0] - bb_test[0][0] , bb_test[1][1] - bb_test[0][1] ])
+    vb = np.array( [bb_gt[1][0] - bb_gt[0][0] , bb_gt[1][1] - bb_gt[0][1] ])
+    cos = va.dot(vb) / ( np.sqrt(va.dot(va)) * np.sqrt(vb.dot(vb)))
 
-            if label==0:
-                p1 = (xyxy[2],xyxy[1])
-                p2 = (xyxy[0],xyxy[3])
-                c = color[0]
-            elif label==1:
-                p1 = (xyxy[0],xyxy[1])
-                p2 = (xyxy[2],xyxy[3])
-                c = color[1]
+    gt_end = bb_gt[1]
+    test_start = bb_test[0]
+    dis = math.sqrt(math.pow((gt_end[0]- test_start[0]),2)+math.pow((gt_end[1]-test_start[1]),2))
+    o =  k1 * cos + k2 * dis + k3 * (bb_test[2] == bb_gt[2])
+    # print( "o" ,o , cos , dis)
+    return o
 
-            cv2.line(patch_img,p1,p2,c,2)
 
-        cv2.imwrite(patch_path,patch_img)
+def associate_detections_to_trackers(detections, trackers, iou_threshold=0.3):
+    """
+    将检测框bbox与卡尔曼滤波器的跟踪框进行关联匹配
+    :param detections:检测框(新一帧检测到的) 
+    :param trackers:跟踪框，即跟踪目标(原有的目标)
+    :param iou_threshold:IOU阈值
+    :return:跟踪成功目标的矩阵：matchs， 返回的是下标 不是数组本身
+            新增目标的矩阵：unmatched_detections
+            跟踪失败即离开画面的目标矩阵：unmatched_trackers
+    """
+    # 跟踪目标数量为0，直接构造结果
+    if (len(trackers) == 0) or (len(detections) == 0):
+        return np.empty((0, 2), dtype=int), np.arange(len(detections)), np.empty((0, 5), dtype=int)
+
+    # iou 不支持数组计算。逐个计算两两间的交并比，调用 linear_assignment 进行匹配
+    iou_matrix = np.zeros((len(detections), len(trackers)), dtype=np.float32)
+    # 遍历目标检测的bbox集合，每个检测框的标识为d
+    for d, det in enumerate(detections):
+        # 遍历跟踪框（卡尔曼滤波器预测）bbox集合，每个跟踪框标识为t
+        for t, trk in enumerate(trackers):
+            iou_matrix[d, t] = iou(det, trk)
+    # 通过匈牙利算法将跟踪框和检测框以[[d,t]...]的二维矩阵的形式存储在match_indices中
+    result = linear_sum_assignment(-iou_matrix)
+    matched_indices = np.array(list(zip(*result)))
+ 
+    # 记录未匹配的检测框及跟踪框
+    # 未匹配的检测框放入unmatched_detections中，表示有新的目标进入画面，要新增跟踪器跟踪目标
+    unmatched_detections = []
+    for d, det in enumerate(detections):
+        if d not in matched_indices[:, 0]:
+            unmatched_detections.append(d)
+    # 未匹配的跟踪框放入unmatched_trackers中，表示目标离开之前的画面，应删除对应的跟踪器
+    unmatched_trackers = []
+    for t, trk in enumerate(trackers):
+        if t not in matched_indices[:, 1]:
+            unmatched_trackers.append(t)
+    # 将匹配成功的跟踪框放入matches中
+    matches = []
+    for m in matched_indices:
+        # 过滤掉IOU低的匹配，将其放入到unmatched_detections和unmatched_trackers
+        if iou_matrix[m[0], m[1]] < iou_threshold:
+            unmatched_detections.append(m[0])
+            unmatched_trackers.append(m[1])
+        # 满足条件的以[[d,t]...]的形式放入matches中
+        else:
+            matches.append(m.reshape(1, 2))
+    # 初始化matches,以np.array的形式返回
+    if len(matches) == 0:
+        matches = np.empty((0, 2), dtype=int)
+    else:
+        matches = np.concatenate(matches, axis=0)
+ 
+    return matches, np.array(unmatched_detections), np.array(unmatched_trackers)
+
 
 #tool
 def xywh2xyxy(img_w,img_h,xywh):
+    """框中心x,y 框宽 框高"""
     x,y,w,h = xywh
     x1 = round((x-0.5*w)*img_w-0.5)
     x2 = round((x+0.5*w)*img_w-0.5)
@@ -51,6 +123,7 @@ def xywh2xyxy(img_w,img_h,xywh):
 
     return [x1,y1,x2,y2]
 
+#把txt文档转换成 线段
 def box2line(txt_path):
     #输出：
     #p1:start point
@@ -68,25 +141,27 @@ def box2line(txt_path):
         xyxy = xywh2xyxy(96,96,xywh)
 
         if label==0:
-            p1 = [xyxy[2],xyxy[1]]
-            p2 = [xyxy[0],xyxy[3]]
+            p1 = [xyxy[2],xyxy[1]] #右下角x y
+            p2 = [xyxy[0],xyxy[3]] #左上角x y
             c = 0
         elif label==1:
-            p1 = [xyxy[0],xyxy[1]]
-            p2 = [xyxy[2],xyxy[3]]
+            p1 = [xyxy[0],xyxy[1]] #左下角x y
+            p2 = [xyxy[2],xyxy[3]] #右上角x y 
             c = 1
         lines.append([p1,p2,c])
+   
     return lines
 
 
 #对于从yolo的输出文件夹中的一系列txt文档中提取出完整的长线段，输出到一个txt文件中
-def txt2json(img_name,yolo_dir,txt_save_path,img_w,img_h ,padding=16 , patch_num = 75 , patch_size=64):
-    line_list = []
+def txt2json(img_name,yolo_dir,txt_save_path,img_w,img_h ,padding=16 , patch_num = 75 , patch_size=64 , iou_threshold = 0.3):
     patch_num = int(img_h / patch_size) 
     count = 0
-    for i in range(int(img_w / patch_size)):
-        for j in range(int(img_h / patch_size)):
-            patch_id = i*patch_num+j
+    trackers = []
+    for i in range(int(img_w / patch_size)): #从左到右
+        for j in range(int(img_h / patch_size)): #从上到下的方式关联线段
+            detections = []
+            patch_id = i * patch_num + j
             # print(patch_id)
             patch_name = img_name + '_' + str(patch_id).zfill(5) + '.txt'
             patch_path = os.path.join(yolo_dir, patch_name)
@@ -96,18 +171,28 @@ def txt2json(img_name,yolo_dir,txt_save_path,img_w,img_h ,padding=16 , patch_num
                     p1,p2,c = line
                     p1 = list(np.add(p1,  [j * patch_size - padding,i * patch_size - padding]))
                     p2 = list(np.add(p2,  [j * patch_size - padding,i * patch_size - padding]))
-                    line_list.append([p1,p2,c])
-    print(len(line_list))
-    #TODO 对line_list中的线段进行关联
-
-    
+                    detections.append([p1,p2,c])
+                    count += 1
+            if (len(trackers) != 0) and (len(detections) != 0):
+                #对新一帧图片中包含的线段进行关联
+                # print("line_end_node",  [line[-1] for line in  trackers])
+                matches, unmatched_detections,unmatched_trackers = associate_detections_to_trackers( detections ,  [line[-1] for line in  trackers] , iou_threshold)
+                #update trackers
+                for d,t in matches:
+                    trackers[t].append(detections[d])
+            else:  
+                # 跟踪目标数量为0，直接构造结果
+                unmatched_detections =  np.arange(len(detections))
+            for d in unmatched_detections:
+                trackers.append([detections[d]])
+            # print(trackers)
 
     # 将线段写入对应的txt文件
-    print(len(line_list))
-    for line in line_list:
-        txt_content = '-'.join([str(a) for a in line]) + '\n'
+    print( "from   #" , count , "  to  #" , len(trackers))
+    for line in trackers:
+        # txt_content = ','.join([str(a) for a in line]) + '\n'
         with open(txt_save_path, 'a') as txt_file:
-            txt_file.write(txt_content)
+            txt_file.write(str(line)+ '\n')
             
 #将名称为img_name的小块图片拼接成大图
 def patch2img_pad(patch_dir,img_name,img_save_path,img_w,img_h ,padding=16 , patch_num = 75 , patch_size=64):
@@ -141,11 +226,20 @@ def draw_line(img_dir):
             lines = file.readlines()
         for j in range(len(lines)):
             single_line = lines[j][:-1]   # 最后一个是换行符，去掉
-            single_line_str = single_line.split("-")
-            p1 = eval(single_line_str[0])
-            p2 =eval(single_line_str[1])
-            c = color[int(single_line_str[2])]
-            cv2.line(img,p1,p2,c,2)
+            # single_line_str = single_line.split("-")
+            trace_list = eval(single_line)
+            if len(trace_list ) > 3:
+                points = []
+                for line in trace_list:
+                    points.append(line[0])
+                    points.append(line[1])
+                points = np.array(points)
+                pts_fit3 = np.polyfit(points[:, 0], points[:, 1], 3)  # 拟合为三次曲线
+                p1 = np.poly1d(pts_fit3) #使用次数合成多项式
+                y_pre = p1(points[:, 0]) # 得到三次曲线对应的点集
+                y_pre = points.reshape(-1,1,2)
+                color = tuple([int(x) for x in np.random.choice(range(256), size=3).astype(np.uint8)])#随机颜色
+                cv2.polylines(img, np.int32([y_pre]), False, color, 5)  #三次曲线上的散点构成的折线图，近似为曲线
         cv2.imwrite(img_path,img)
 
 
