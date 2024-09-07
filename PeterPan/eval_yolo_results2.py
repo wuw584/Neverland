@@ -8,12 +8,10 @@ def img2patch_pad(img_path,save_dir,patch_size=64,padding=16):
     img_name = img_path.split("/")[-1].replace(".png","")
     # print(img_path)
     img = cv2.imread(img_path)
-    img_w,img_h = img.shape[:2] 
-    # print(img_w,img_h)    # 4800,4800   
-    patch_num = int(img_h / patch_size)  # 75
-
-    for i in range(int(img_w / patch_size)):
-        for j in range(int(img_h / patch_size)):
+    img_h,img_w  = img.shape[:2] #高640 宽512
+    patch_num = int(img_w / patch_size)  # 75
+    for i in range(int(img_h / patch_size)): #从上到下 
+        for j in range(int(img_w / patch_size)): #从左到右
             patch_img = img[i*patch_size:(i+1)*patch_size,j*patch_size:(j+1)*patch_size]
             patch_id = i*patch_num+j
             patch_name = img_name + '_' + str(patch_id).zfill(5) + '.png'
@@ -21,15 +19,15 @@ def img2patch_pad(img_path,save_dir,patch_size=64,padding=16):
             patch_img_pad = cv2.copyMakeBorder(patch_img, padding, padding, padding, padding, cv2.BORDER_CONSTANT, 128)
             cv2.imwrite(patch_path,patch_img_pad)
     # print("done",patch_path)
-    return patch_num,img_w,img_h 
+    return patch_num,img_h,img_w 
 
 
-def patch2img_pad(patch_dir,img_name,img_save_path,img_w,img_h ,padding=16 , patch_num = 75 , patch_size=64):
+def patch2img_pad(patch_dir,img_name,img_save_path,img_h,img_w ,padding=16 , patch_num = 75 , patch_size=64):
     patch_size = 64
-    img = np.zeros((img_w,img_h,3),dtype=np.uint8)
-    patch_num = int(img_h / patch_size) 
-    for i in range(int(img_w / patch_size)):
-        for j in range(int(img_h / patch_size)):
+    img = np.zeros((img_h,img_w,3),dtype=np.uint8)
+    patch_num = int(img_w / patch_size) 
+    for i in range(int(img_h / patch_size)):
+        for j in range(int(img_w / patch_size)):
             patch_id = i*patch_num+j
             patch_name = img_name + '_' + str(patch_id).zfill(5) + '.png'
             patch_path = os.path.join(patch_dir, patch_name)
