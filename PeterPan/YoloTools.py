@@ -205,7 +205,7 @@ def txt2json(img_name,yolo_dir,txt_save_path,img_h,img_w ,padding=16 , patch_num
                     detections.append([p1,p2,c])
                     count += 1
 
-            # TODO 先横向拼接，再纵向
+            #先横向拼接
             if (len(trackers) != 0) and (len(detections) != 0):
                 #对新一帧图片中包含的线段进行关联
                 # print("line_end_node",  [line[-1] for line in  trackers])
@@ -219,6 +219,9 @@ def txt2json(img_name,yolo_dir,txt_save_path,img_h,img_w ,padding=16 , patch_num
             for d in unmatched_detections:
                 trackers.append([detections[d]])
             # print(trackers)
+
+        #再纵向拼接
+        
 
     #对关联结果简单评估
     # trackers1 = [line for line in trackers if len(line) >= 1 ] #关联线段数> 3 才存入txt
